@@ -1,38 +1,22 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import Response
-from twilio.twiml.voice_response import VoiceResponse
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 app = FastAPI()
 
-@app.post("/voice")
-async def voice(request: Request):
-    form = await request.form()
-    age = form.get("SpeechResult")
+class AgeRequest(BaseModel):
+    age: int
 
-    response = VoiceResponse()
-
-    # Agar pehli baar call hua (age nahi mili)
-    if not age:
-        gather = response.gather(
-            input="speech",
-            action="/voice",
-            method="POST"
-        )
-        gather.say("Assalam o Alaikum. Medical screening ke liye apni age batayein.")
-        return Response(str(response), media_type="application/xml")
-
-    # Age extract karein
+@app.post("/check-age")
+def check_age(data: AgeRequest):
     try:
-        age_number = int(''.join(filter(str.isdigit, age)))
+        age = int(data.age)
 
-        if age_number >= 65:
-            response.say("Aap medical services ke liye eligible hain. Shukriya.")
+        if age >= 65:
+            return {"message": "Aap medical services ke liye fit hain."}
+        elif age > 0:
+            return {"message": "Maaf kijiye. Aap eligible nahi hain."}
         else:
-            response.say("Maazrat. Medical services sirf 65 saal ya us se zyada age ke liye hain.")
+            return {"message": "Invalid age entered."}
 
     except:
-        response.say("Age samajh nahi aayi. Dobara call karein.")
-
-    response.hangup()
-
-    return Response(str(response), media_type="application/xml")
+        return {"message": "Age samajh nahi aayi."}
